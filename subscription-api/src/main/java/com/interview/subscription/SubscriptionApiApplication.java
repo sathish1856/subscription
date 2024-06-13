@@ -1,4 +1,4 @@
-package com.example.subscription;
+package com.interview.subscription;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

@@ -1,4 +1,4 @@
-package com.example.subscription;
+package com.interview.subscription;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
