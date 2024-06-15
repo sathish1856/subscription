@@ -111,4 +111,14 @@ public class Subscription {
 		this.updatedAt = updatedAt;
 	}
 
+    @PrePersist
+    protected void onCreate() {
+    	createdAt = LocalDateTime.now();
+    	updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+    	updatedAt = LocalDateTime.now();
+    }
 }

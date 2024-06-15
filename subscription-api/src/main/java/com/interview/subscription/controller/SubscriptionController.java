@@ -1,23 +1,30 @@
 package com.interview.subscription.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.interview.subscription.dto.HotelDTO;
-import com.interview.subscription.dto.SubscriptionDTO;
-import com.interview.subscription.model.*;
-import com.interview.subscription.repository.HotelRepository;
-import com.interview.subscription.repository.SubscriptionRepository;
-
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interview.subscription.dto.SubscriptionDTO;
+import com.interview.subscription.model.Hotel;
+import com.interview.subscription.model.Status;
+import com.interview.subscription.model.Subscription;
+import com.interview.subscription.model.Term;
+import com.interview.subscription.repository.HotelRepository;
+import com.interview.subscription.repository.SubscriptionRepository;
 
 @RestController
 @RequestMapping("/api/subscriptions")
@@ -36,14 +43,14 @@ public class SubscriptionController {
     public List<SubscriptionDTO> getAllSubscriptions() {
         List<Subscription> subscriptions = subscriptionRepository.findAll();
         return subscriptions.stream()
-                .map(subscription -> objectMapper.convertValue(subscription, SubscriptionDTO.class))
+                .map(subscription -> convertToDTO(subscription))
                 .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<SubscriptionDTO> getSubscriptionById(@PathVariable("id") Long id) {
         Optional<Subscription> subscriptionOptional = subscriptionRepository.findById(id);
-        return subscriptionOptional.map(subscription -> ResponseEntity.ok(objectMapper.convertValue(subscription, SubscriptionDTO.class)))
+        return subscriptionOptional.map(subscription -> ResponseEntity.ok(convertToDTO(subscription)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -91,7 +98,7 @@ public class SubscriptionController {
         subscription.setHotel(hotelOptional.get());
 
         Subscription updatedSubscription = subscriptionRepository.save(subscription);
-        return ResponseEntity.ok(objectMapper.convertValue(updatedSubscription, SubscriptionDTO.class));
+        return ResponseEntity.ok(convertToDTO(updatedSubscription));
     }
 
     @PostMapping("/cancel/{id}")
@@ -100,12 +107,11 @@ public class SubscriptionController {
         if (!subscriptionOptional.isPresent()) {
             return ResponseEntity.notFound().build();
         }
-
         Subscription subscription = subscriptionOptional.get();
         subscription.setStatus(Status.CANCELED);
         subscription.setEndDate(java.time.LocalDate.now());
         Subscription canceledSubscription = subscriptionRepository.save(subscription);
-        return ResponseEntity.ok(objectMapper.convertValue(canceledSubscription, SubscriptionDTO.class));
+        return ResponseEntity.ok(convertToDTO(canceledSubscription));
     }
 
     @PostMapping("/restart/{id}")
@@ -114,7 +120,6 @@ public class SubscriptionController {
         if (!subscriptionOptional.isPresent()) {
             return ResponseEntity.notFound().build();
         }
-
         Subscription subscription = subscriptionOptional.get();
         subscription.setStatus(Status.ACTIVE);
         subscription.setEndDate(null);
@@ -122,14 +127,14 @@ public class SubscriptionController {
                 subscription.getNextPayment().plusMonths(1) :
                 subscription.getNextPayment().plusYears(1));
         Subscription restartedSubscription = subscriptionRepository.save(subscription);
-        return ResponseEntity.ok(objectMapper.convertValue(restartedSubscription, SubscriptionDTO.class));
+        return ResponseEntity.ok(convertToDTO(restartedSubscription));
     }
 
     @GetMapping("/status/{status}")
     public List<SubscriptionDTO> getSubscriptionsByStatus(@PathVariable("status") String status) {
         List<Subscription> subscriptions = subscriptionRepository.findByStatus(Status.valueOf(status));
         return subscriptions.stream()
-                .map(subscription -> objectMapper.convertValue(subscription, SubscriptionDTO.class))
+                .map(subscription -> convertToDTO(subscription))
                 .collect(Collectors.toList());
     }
 
