@@ -3,8 +3,10 @@ package com.interview.subscription.model;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 
+@Schema(description = "Subscription Model")
 @Entity
 public class Subscription {
 	@Id

@@ -1,0 +1,379 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+paths:
+  /v1/subscriptions/{id}:
+    get:
+      tags:
+      - subscription-controller
+      summary: Get subscription based on ID
+      operationId: getSubscriptionById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "400":
+          description: Bad Request
+        "200":
+          description: Get a Subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "404":
+          description: Subscription not found
+    put:
+      tags:
+      - subscription-controller
+      summary: Updates the given subscription
+      operationId: updateSubscription
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionDTO"
+        required: true
+      responses:
+        "400":
+          description: Bad Request
+        "200":
+          description: Returns the updated subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "404":
+          description: Subscriptions not found
+  /v1/hotels/{id}:
+    get:
+      tags:
+      - hotel-controller
+      summary: Get the hotel for given ID
+      operationId: getHotelById
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "400":
+          description: Bad Request
+        "200":
+          description: Return Hotel for the given ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hotel"
+        "404":
+          description: Subscriptions not found
+    put:
+      tags:
+      - hotel-controller
+      summary: Update the Hotel Information
+      operationId: updateHotel
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HotelDTO"
+        required: true
+      responses:
+        "400":
+          description: Bad Request
+        "200":
+          description: Returns the updated hotel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hotel"
+        "404":
+          description: Hotel not found
+    delete:
+      tags:
+      - hotel-controller
+      summary: Deletes the hotel of Given ID
+      operationId: deleteHotel
+      parameters: []
+      responses:
+        "400":
+          description: Bad Request
+        "404":
+          description: URL not found
+        "200":
+          description: Successfully deletes the Hotel info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hotel"
+  /v1/subscriptions:
+    get:
+      tags:
+      - subscription-controller
+      summary: Get List of all Subscriptions
+      operationId: getAllSubscriptions
+      responses:
+        "400":
+          description: Bad Request
+        "200":
+          description: Listed all the Subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "404":
+          description: Subscriptions not found
+    post:
+      tags:
+      - subscription-controller
+      summary: Get List of all Subscriptions
+      operationId: createSubscription
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionDTO"
+        required: true
+      responses:
+        "400":
+          description: Bad Request
+        "200":
+          description: Listed all the Subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "404":
+          description: Subscriptions not found
+        "409":
+          description: Active Subscription avaliable for hotel
+  /v1/subscriptions/restart/{id}:
+    post:
+      tags:
+      - subscription-controller
+      summary: Restart the existing subscription
+      operationId: restartSubscription
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Returns restarted subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "400":
+          description: Bad Request
+        "404":
+          description: Subscriptions not found
+  /v1/subscriptions/cancel/{id}:
+    post:
+      tags:
+      - subscription-controller
+      summary: Cancesl the subscription for given subscriptionID
+      operationId: cancelSubscription
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "400":
+          description: Bad Request
+        "200":
+          description: Returns cancelled subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "404":
+          description: Subscriptions not found
+  /v1/hotels:
+    get:
+      tags:
+      - hotel-controller
+      summary: Get List of all Hotels
+      operationId: getAllHotels
+      responses:
+        "400":
+          description: Bad Request
+        "404":
+          description: Hotels not found
+        "200":
+          description: Listed all the Hotels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hotel"
+    post:
+      tags:
+      - hotel-controller
+      summary: Create a new Hotel
+      operationId: createHotel
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HotelDTO"
+        required: true
+      responses:
+        "200":
+          description: Returns the created Hotel
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hotel"
+        "400":
+          description: Bad Request
+        "404":
+          description: URL not found
+  /v1/subscriptions/filter/{status}:
+    get:
+      tags:
+      - subscription-controller
+      summary: Get List of all Subscriptions for given filter
+      operationId: filterSubscriptionsByStatus
+      parameters:
+      - name: status
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Listed all the Subscriptions for given filter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "400":
+          description: Bad Request
+        "404":
+          description: Subscriptions not found
+components:
+  schemas:
+    Hotel:
+      type: object
+      properties:
+        hotelid:
+          type: integer
+          format: int64
+        hotelName:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zipCode:
+          type: string
+        country:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    SubscriptionDTO:
+      type: object
+      properties:
+        subscriptionID:
+          type: integer
+          format: int64
+        hotelid:
+          type: integer
+          format: int64
+        startDate:
+          type: string
+        nextPayment:
+          type: string
+        endDate:
+          type: string
+        term:
+          type: string
+        status:
+          type: string
+        hotel:
+          $ref: "#/components/schemas/Hotel"
+    Subscription:
+      type: object
+      properties:
+        hotel:
+          $ref: "#/components/schemas/Hotel"
+        startDate:
+          type: string
+          format: date
+        nextPayment:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        term:
+          type: string
+          enum:
+          - MONTHLY
+          - YEARLY
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - EXPIRED
+          - CANCELED
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        subscriptionID:
+          type: integer
+          format: int64
+      description: Subscription Model
+    HotelDTO:
+      type: object
+      properties:
+        hotelName:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zipCode:
+          type: string
+        country:
+          type: string
+        hotelID:
+          type: integer
+          format: int64
