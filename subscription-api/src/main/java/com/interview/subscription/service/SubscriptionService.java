@@ -85,17 +85,12 @@ public class SubscriptionService {
 	public SubscriptionDTO restartSubscription(Long id) {
 		Subscription subscription = subscriptionRepository.findById(id)
 				.orElseThrow(() -> new NoSuchElementException("Subscription not found"));
-
 		String oldStatus = subscription.getStatus().name();
 		subscription.setStatus(Status.ACTIVE);
 		subscription.setEndDate(null);
-		subscription.setNextPayment(subscription.getTerm() == Term.MONTHLY ? subscription.getNextPayment().plusMonths(1)
-				: subscription.getNextPayment().plusYears(1));
-
+		subscription.setNextPayment(calculateNextPaymentDate(subscription));
 		Subscription restartedSubscription = subscriptionRepository.save(subscription);
-
 		saveAuditRecord(restartedSubscription, "status", oldStatus, Status.ACTIVE.name());
-
 		return convertToDTO(restartedSubscription);
 	}
 
@@ -121,7 +116,11 @@ public class SubscriptionService {
 	}
 
 	private Subscription prepareSubscription(SubscriptionDTO subscriptionDTO, Hotel hotel) {
-		Subscription subscription = objectMapper.convertValue(subscriptionDTO, Subscription.class);
+		Subscription subscription = new Subscription();
+		subscription = subscriptionRepository.findByHotel(hotel);
+		if(subscription == null) {
+			subscription = objectMapper.convertValue(subscriptionDTO, Subscription.class);			
+		}
 		subscription.setHotel(hotel);
 		subscription.setStatus(Status.ACTIVE);
 		subscription.setNextPayment(calculateNextPaymentDate(subscription));
@@ -153,4 +152,15 @@ public class SubscriptionService {
 		}
 		return subscriptions.stream().map(subscription -> convertToDTO(subscription)).collect(Collectors.toList());
 	}
+	
+    public void checkAndUpdateExpiredSubscriptions() {
+        List<Subscription> activeSubscriptions = subscriptionRepository.findByStatus(Status.ACTIVE);
+        LocalDate today = LocalDate.now();
+
+        List<Subscription> expiredSubscriptions = activeSubscriptions.stream()
+                .filter(subscription -> subscription.getEndDate() != null && subscription.getEndDate().isBefore(today))
+                .peek(subscription -> subscription.setStatus(Status.EXPIRED))
+                .collect(Collectors.toList());
+        subscriptionRepository.saveAll(expiredSubscriptions);
+    }
 }

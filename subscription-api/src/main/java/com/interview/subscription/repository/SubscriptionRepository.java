@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.interview.subscription.model.Hotel;
 import com.interview.subscription.model.Status;
 import com.interview.subscription.model.Subscription;
 
@@ -18,4 +19,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     Optional<Subscription> findByHotelIdAndStatus(@Param("hotelid") Long hotelid, @Param("status") Status status);
 
 	List<Subscription> findByStatus(Status status);
+
+	Subscription findByHotel(Hotel hotel);
 }
