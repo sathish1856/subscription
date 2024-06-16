@@ -45,11 +45,11 @@ public class SubscriptionAudit {
         this.auditid = auditid;
     }
 
-    public Subscription getSubscriptionid() {
+    public Subscription getSubscription() {
         return subscription;
     }
 
-    public void setSubscriptionid(Subscription subscriptionid) {
+    public void setSubscription(Subscription subscriptionid) {
         this.subscription = subscriptionid;
     }
 

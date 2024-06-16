@@ -1,99 +1,143 @@
 package com.interview.subscription.service;
 
 import java.time.LocalDate;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interview.subscription.dto.SubscriptionDTO;
 import com.interview.subscription.model.Hotel;
 import com.interview.subscription.model.Status;
 import com.interview.subscription.model.Subscription;
+import com.interview.subscription.model.SubscriptionAudit;
 import com.interview.subscription.model.Term;
 import com.interview.subscription.repository.HotelRepository;
+import com.interview.subscription.repository.SubscriptionAuditRepository;
 import com.interview.subscription.repository.SubscriptionRepository;
 
 @Service
 public class SubscriptionService {
 
-	@Autowired
-	private SubscriptionRepository subscriptionRepository;
+    @Autowired
+    private SubscriptionRepository subscriptionRepository;
+
     @Autowired
     private HotelRepository hotelRepository;
 
-    @PostMapping
-    public ResponseEntity<Subscription> createSubscription(@RequestBody Subscription subscription) {
-        Long hotelid = 1L;
-        Optional<Hotel> hotelOptional = hotelRepository.findById(hotelid);
-        if (!hotelOptional.isPresent()) {
-            return ResponseEntity.badRequest().build();
-        }
+    @Autowired
+    private ObjectMapper objectMapper;
 
-        Optional<Subscription> activeSubscription = subscriptionRepository
-                .findByHotelIdAndStatus(hotelid, Status.ACTIVE);
-        if (activeSubscription.isPresent()) {
-            throw new IllegalStateException("Hotel already has an active subscription");
-        }
+	@Autowired
+	private SubscriptionAuditRepository subscriptionAuditRepository;
 
-        subscription.setHotel(hotelOptional.get());
-        subscription.setStatus(Status.ACTIVE);
-        subscription.setNextPayment(
-                subscription.getStartDate().plusMonths(subscription.getTerm() == Term.MONTHLY ? 1 : 12));
-        Subscription savedSubscription = subscriptionRepository.save(subscription);
-        return ResponseEntity.ok(savedSubscription);
+	public void saveAuditRecord(Subscription subscription, String fieldChanged, String oldValue, String newValue) {
+	    SubscriptionAudit audit = new SubscriptionAudit();
+	    audit.setSubscription(subscription);
+	    audit.setChangeDate(LocalDateTime.now());
+	    audit.setFieldChanged(fieldChanged);
+	    audit.setOldValue(oldValue);
+	    audit.setNewValue(newValue);
+	    subscriptionAuditRepository.save(audit);
+	}
+
+	public SubscriptionDTO createSubscription(SubscriptionDTO subscriptionDTO) {  
+        Hotel hotel = validateHotel(subscriptionDTO.getHotelid());
+        ensureNoActiveSubscription(subscriptionDTO.getHotelid());
+        Subscription subscription = prepareSubscription(subscriptionDTO, hotel);   
+        Subscription savedSubscription = subscriptionRepository.save(subscription);    
+        saveAuditRecord(savedSubscription, "status", null, Status.ACTIVE.name());  
+        return convertToDTO(savedSubscription);
+	}
+
+    public SubscriptionDTO convertToDTO(Subscription subscription) {
+    	SubscriptionDTO subscriptionDTO = new SubscriptionDTO();
+        BeanUtils.copyProperties(subscription, subscriptionDTO);
+       // subscriptionDTO.setEndDate(subscription.getEndDate().toString());
+        subscriptionDTO.setStartDate(subscription.getStartDate().toString());
+        subscriptionDTO.setHotelid(subscription.getHotel().getHotelid());
+        subscriptionDTO.setTerm(subscription.getTerm().name());
+        subscriptionDTO.setNextPayment(subscription.getNextPayment().toString());
+        subscriptionDTO.setStatus(subscription.getStatus().name());
+        return subscriptionDTO;
     }
 
-
-	public Subscription cancelSubscription(Long subscriptionID) {
-		Optional<Subscription> subscriptionOpt = subscriptionRepository.findById(subscriptionID);
-		if (subscriptionOpt.isPresent()) {
-			Subscription subscription = subscriptionOpt.get();
-			subscription.setStatus(Status.CANCELED);
-			subscription.setEndDate(LocalDate.now());
-			return subscriptionRepository.save(subscription);
-		} else {
-			throw new IllegalStateException("Subscription not found");
-		}
+	public SubscriptionDTO cancelSubscription(Long id) {
+        Subscription subscription = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Subscription not found"));
+        String oldStatus = subscription.getStatus().name();
+        subscription.setStatus(Status.CANCELED);
+        subscription.setEndDate(LocalDate.now());
+        Subscription canceledSubscription = subscriptionRepository.save(subscription);
+        saveAuditRecord(canceledSubscription, "status", oldStatus, Status.CANCELED.name());
+        return convertToDTO(canceledSubscription);
 	}
 
-	public List<Subscription> getAllSubscriptions() {
-		return subscriptionRepository.findAll();
+	public SubscriptionDTO restartSubscription(Long id) {
+        Subscription subscription = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Subscription not found"));
+
+        String oldStatus = subscription.getStatus().name();
+        subscription.setStatus(Status.ACTIVE);
+        subscription.setEndDate(null);
+        subscription.setNextPayment(subscription.getTerm() == Term.MONTHLY ?
+                subscription.getNextPayment().plusMonths(1) :
+                subscription.getNextPayment().plusYears(1));
+
+        Subscription restartedSubscription = subscriptionRepository.save(subscription);
+
+        saveAuditRecord(restartedSubscription, "status", oldStatus, Status.ACTIVE.name());
+
+        return convertToDTO(restartedSubscription);
 	}
 
-	public List<Subscription> filterSubscriptions(Status status, LocalDate startDateMonth) {
-		if (status != null && startDateMonth != null) {
-			return subscriptionRepository.findByStartDateMonth(startDateMonth).stream()
-					.filter(subscription -> subscription.getStatus() == status).toList();
-		} else if (status != null) {
-			return subscriptionRepository.findByStatus(status);
-		} else if (startDateMonth != null) {
-			return subscriptionRepository.findByStartDateMonth(startDateMonth);
-		} else {
-			return getAllSubscriptions();
-		}
+	public SubscriptionDTO updateSubscription(Long id, SubscriptionDTO subscriptionDTO) {
+        Hotel hotel = validateHotel(subscriptionDTO.getHotelid());
+        Subscription subscription = subscriptionRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Subscription not found"));
+        updateSubscriptionDetails(subscription, subscriptionDTO, hotel);
+        Subscription updatedSubscription = subscriptionRepository.save(subscription);
+        saveAuditRecord(updatedSubscription, "status", subscription.getStatus().name(), subscription.getStatus().name());
+        return convertToDTO(updatedSubscription);
 	}
+	
+    private Hotel validateHotel(Long hotelId) {
+        return hotelRepository.findById(hotelId)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid hotel ID"));
+    }
 
-	public Subscription restartSubscription(Long subscriptionID) {
-		Optional<Subscription> subscriptionOpt = subscriptionRepository.findById(subscriptionID);
-		if (subscriptionOpt.isPresent()) {
-			Subscription subscription = subscriptionOpt.get();
-			subscription.setStatus(Status.ACTIVE);
-			subscription.setNextPayment(LocalDate.now().plusMonths(subscription.getTerm() == Term.MONTHLY ? 1 : 12));
-			subscription.setEndDate(null);
-			return subscriptionRepository.save(subscription);
-		} else {
-			throw new IllegalStateException("Subscription not found");
-		}
-	}
+    private void ensureNoActiveSubscription(Long hotelId) {
+        subscriptionRepository.findByHotelIdAndStatus(hotelId, Status.ACTIVE)
+                .ifPresent(subscription -> {
+                    throw new IllegalStateException("Hotel already has an active subscription");
+                });
+    }
 
-	public Subscription getSubscription(Long subscriptionID) {
-		return subscriptionRepository.findById(subscriptionID)
-				.orElseThrow(() -> new IllegalStateException("Subscription not found"));
-	}
+    private Subscription prepareSubscription(SubscriptionDTO subscriptionDTO, Hotel hotel) {
+        Subscription subscription = objectMapper.convertValue(subscriptionDTO, Subscription.class);
+        subscription.setHotel(hotel);
+        subscription.setStatus(Status.ACTIVE);
+        subscription.setNextPayment(calculateNextPaymentDate(subscription));
+        return subscription;
+    }
 
+    private LocalDate calculateNextPaymentDate(Subscription subscription) {
+        int termInMonths = subscription.getTerm() == Term.MONTHLY ? 1 : 12;
+        return subscription.getStartDate().plusMonths(termInMonths);
+    }
+
+    private void updateSubscriptionDetails(Subscription subscription, SubscriptionDTO subscriptionDTO, Hotel hotel) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        subscription.setStartDate(LocalDate.parse(subscriptionDTO.getStartDate(), formatter));
+        subscription.setNextPayment(LocalDate.parse(subscriptionDTO.getNextPayment(), formatter));
+        subscription.setEndDate(LocalDate.parse(subscriptionDTO.getNextPayment(), formatter));
+        subscription.setTerm(Term.valueOf(subscriptionDTO.getTerm()));
+        subscription.setStatus(Status.valueOf(subscriptionDTO.getStatus()));
+        subscription.setHotel(hotel);
+    }
 }

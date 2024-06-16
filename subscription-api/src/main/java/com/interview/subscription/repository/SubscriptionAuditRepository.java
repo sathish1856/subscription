@@ -8,7 +8,5 @@ import java.util.List;
 
 public interface SubscriptionAuditRepository extends JpaRepository<SubscriptionAudit, Long> {
 
-    @Query( value="select a from SubscriptionAudit a where a.subscription.subscriptionid = :subscriptionid")
-    List<SubscriptionAudit> findBysubscriptionid(Long subscriptionid);
 }
 
