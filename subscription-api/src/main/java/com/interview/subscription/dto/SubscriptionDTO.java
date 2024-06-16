@@ -1,5 +1,7 @@
 package com.interview.subscription.dto;
 
+import com.interview.subscription.model.Hotel;
+
 public class SubscriptionDTO {
 	private Long subscriptionID;
 	private Long hotelid;
@@ -8,6 +10,16 @@ public class SubscriptionDTO {
 	private String endDate;
 	private String term;
 	private String status;
+	private Hotel hotel;
+	
+
+	public Hotel getHotel() {
+		return hotel;
+	}
+
+	public void setHotel(Hotel hotel) {
+		this.hotel = hotel;
+	}
 
 	public Long getSubscriptionID() {
 		return subscriptionID;
