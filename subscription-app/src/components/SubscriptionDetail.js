@@ -32,11 +32,17 @@ const SubscriptionDetail = () => {
     return (
         <div className="container mt-4">
             <h1>Subscription Detail</h1>
-            <p><strong>Hotel ID:</strong> {subscription.hotelID}</p>
+            <p><strong>Hotel Name:</strong> {subscription.hotel.hotelName}</p>
             <p><strong>Status:</strong> {subscription.status}</p>
             <p><strong>Next Payment:</strong> {subscription.nextPayment}</p>
-            <button className="btn btn-danger me-2" onClick={handleCancel}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleRestart}>Restart</button>
+            {(subscription.status === 'ACTIVE') && (
+                <button className="btn btn-danger me-2" onClick={handleCancel}>Cancel Subscription</button>
+            )}
+
+            {(subscription.status === 'CANCELED' || subscription.status === 'EXPIRED') && (
+                <button className="btn btn-primary" onClick={handleRestart}>Restart Subscription</button>
+            )}
+            
         </div>
     );
 };

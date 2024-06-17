@@ -1,0 +1,36 @@
+services:
+  spring-app:
+    build:
+      context: ./subscription-api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - springapimysql-net
+    environment:
+      - spring.datasource.url=jdbc:mysql://mysqldb:3306/subscriptiondb
+    depends_on:
+      - mysqldb
+    restart: always
+    volumes:
+      - .m2:/root/.m2
+  mysqldb:
+    image: "mysql:8.0"
+    restart: always
+    ports:
+      - "3307:3306"
+    networks:
+      - springapimysql-net
+    environment:
+      MYSQL_DATABASE: subscriptiondb
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypass
+      MYSQL_ROOT_PASSWORD: myrootpass
+  react-app:
+      build:
+        context: ./subscription-app
+        dockerfile: Dockerfile
+      ports:
+        - "3000:80"
+networks:
+  springapimysql-net:
